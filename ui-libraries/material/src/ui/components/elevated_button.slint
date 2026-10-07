@@ -38,8 +38,11 @@ export component ElevatedButton {
             elevation.level: 0;
             base.color: MaterialPalette.on_surface;
         }
+        pressed when base.pressed || base.enter_pressed : {
+            elevation.level: 1;
+        }
         hover when base.has_hover && !base.pressed && !base.enter_pressed : {
-            elevation.level: 3;
+            elevation.level: 2;
         }
     ]
 }

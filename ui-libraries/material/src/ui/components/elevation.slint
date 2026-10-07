@@ -4,6 +4,7 @@
 import { Palette } from "std-widgets.slint";
 import { MaterialWindow } from "material_window.slint";
 import { MaterialPalette } from "../styling/material_palette.slint";
+import { MaterialAnimations } from "../styling/material_animations.slint";
 
 export component Elevation {
     in property <brush> background;
@@ -14,10 +15,21 @@ export component Elevation {
 
     outer_shadow := Rectangle {
         border_radius: root.border_radius;
+        background: root.background;
+
+        animate drop_shadow_offset_y, drop_shadow_blur, drop_shadow_color {
+            duration: MaterialAnimations.standard_fast_duration;
+            easing: MaterialAnimations.standard_easing;
+        }
 
         inner_shadow := Rectangle {
             border_radius: root.border_radius;
             background: root.background;
+
+            animate drop_shadow_offset_y, drop_shadow_blur, drop_shadow_color {
+                duration: MaterialAnimations.standard_fast_duration;
+                easing: MaterialAnimations.standard_easing;
+            }
 
             @children
         }

@@ -29,8 +29,55 @@ export component Switch {
     accessible-action-default => { if(root.enabled) {touch_area.clicked();} }
     forward_focus: touch_area;
 
+    property <bool> r0_active: false;
+    property <length> r0_x;
+    property <length> r0_y;
+    property <bool> r0_pressed: false;
+
+    property <bool> r1_active: false;
+    property <length> r1_x;
+    property <length> r1_y;
+    property <bool> r1_pressed: false;
+
+    function trigger_ripple(x: length, y: length) {
+        if !root.r0_active {
+            root.r0_x = x; root.r0_y = y; root.r0_pressed = true; root.r0_active = true;
+        } else if !root.r1_active {
+            root.r1_x = x; root.r1_y = y; root.r1_pressed = true; root.r1_active = true;
+        }
+    }
+
+    function release_ripples() {
+        root.r0_pressed = false;
+        root.r1_pressed = false;
+    }
+
     touch_area := FocusTouchArea {
         enabled: root.enabled;
+
+        pointer-event(event) => {
+            if root.enabled {
+                if event.button == PointerEventButton.left && event.kind == PointerEventKind.down {
+                    root.trigger_ripple(self.mouse-x, self.mouse-y);
+                } else if event.kind == PointerEventKind.up || event.kind == PointerEventKind.cancel {
+                    root.release_ripples();
+                }
+            }
+        }
+
+        changed pressed => {
+            if !self.pressed {
+                root.release_ripples();
+            }
+        }
+
+        changed enter_pressed => {
+            if self.enter_pressed && root.enabled {
+                root.trigger_ripple(root.width / 2, root.height / 2);
+            } else if !self.enter_pressed {
+                root.release_ripples();
+            }
+        }
 
         background_layer := Rectangle {
             background: root.checked ? MaterialPalette.primary : MaterialPalette.surface_container_highest;
@@ -48,15 +95,33 @@ export component Switch {
                 pressed: touch_area.pressed;
                 enabled: root.enabled;
 
-                // ripple
-                if root.enabled && (touch_area.pressed || touch_area.enter_pressed) : Ripple {
-                    pressed_x: touch_area.pressed_x;
-                    pressed_y: touch_area.pressed_y;
+                // ripples
+                if root.enabled && root.r0_active : Ripple {
+                    pressed: root.r0_pressed;
+                    pressed_x: root.r0_x;
+                    pressed_y: root.r0_y;
                     width: 100%;
                     height: 100%;
                     border_radius: state_layer.border_radius;
                     color: state_layer.background;
                     clip_ripple: true;
+                    finished => {
+                        root.r0_active = false;
+                    }
+                }
+
+                if root.enabled && root.r1_active : Ripple {
+                    pressed: root.r1_pressed;
+                    pressed_x: root.r1_x;
+                    pressed_y: root.r1_y;
+                    width: 100%;
+                    height: 100%;
+                    border_radius: state_layer.border_radius;
+                    color: state_layer.background;
+                    clip_ripple: true;
+                    finished => {
+                        root.r1_active = false;
+                    }
                 }
             }
 

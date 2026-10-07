@@ -12,6 +12,81 @@ export component Ripple {
     in property <length> pressed_y;
     in property <color> color;
     in property <bool> clip_ripple: true;
+    in property <bool> pressed: true;
+
+    callback finished();
+
+    property <length> start_diameter: max(root.width, root.height) * 0.6;
+    property <length> end_diameter: Math.sqrt((root.width / 1px) * (root.width / 1px) + (root.height / 1px) * (root.height / 1px)) * 1px + 20px;
+
+    property <length> current_diameter: root.start_diameter;
+    property <float> current_opacity: 0.0;
+    property <length> current_x: root.pressed_x;
+    property <length> current_y: root.pressed_y;
+
+    property <bool> expansion_finished: false;
+    property <bool> fading_out: root.expansion_finished && !root.pressed;
+
+    init => {
+        self.current_diameter = root.end_diameter;
+        self.current_x = root.width / 2;
+        self.current_y = root.height / 2;
+    }
+
+    animate current_diameter {
+        duration: MaterialAnimations.ripple_duration;
+        easing: MaterialAnimations.ripple_easing;
+    }
+
+    animate current_x, current_y {
+        duration: MaterialAnimations.ripple_duration;
+        easing: linear;
+    }
+
+    expand_timer := Timer {
+        interval: MaterialAnimations.ripple_duration;
+        running: true;
+        triggered => {
+            root.expansion_finished = true;
+            self.running = false;
+        }
+    }
+
+    fade_timer := Timer {
+        interval: MaterialAnimations.ripple_fade_out_duration;
+        running: false;
+        triggered => {
+            root.finished();
+            self.running = false;
+        }
+    }
+
+    changed fading_out => {
+        if self.fading_out {
+            fade_timer.running = true;
+        }
+    }
+
+    states [
+        active when !root.fading_out : {
+            current_opacity: MaterialPalette.state_layer_opacity_press;
+            in {
+                animate current_opacity {
+                    duration: MaterialAnimations.ripple_fade_in_duration;
+                    easing: linear;
+                }
+            }
+        }
+        fade_out when root.fading_out : {
+            current_opacity: 0.0;
+            in {
+                animate current_opacity {
+                    duration: MaterialAnimations.ripple_fade_out_duration;
+                    easing: linear;
+                }
+            }
+        }
+    ]
 
     Rectangle {
         width: 100%;
@@ -20,18 +95,13 @@ export component Ripple {
         clip: root.clip_ripple;
 
         ripple := Rectangle {
-            x: root.pressed_x  - self.width / 2;
-            y: root.pressed_y  - self.height / 2;
+            x: root.current_x - self.width / 2;
+            y: root.current_y - self.height / 2;
+            width: root.current_diameter;
             height: self.width;
             border_radius: self.width / 2;
-            opacity: MaterialPalette.state_layer_opacity_press;
+            opacity: root.current_opacity;
             background: root.color;
-
-            init => {
-                self.width =  root.width * 2 * 1.4142;
-            }
-
-            animate width { duration: MaterialAnimations.ripple_duration; easing: MaterialAnimations.ripple_easing; }
         }
     }
 }
@@ -68,11 +138,11 @@ export component StateLayer {
         disabled when !root.enabled && root.display_background : {
             root.state_layer_opacity: MaterialPalette.state_layer_opacity_focus;
         }
-        focus when root.enabled && root.has_focus : {
-            root.state_layer_opacity: MaterialPalette.state_layer_opacity_focus;
-        }
         pressed when root.enabled && root.pressed : {
             root.state_layer_opacity: MaterialPalette.state_layer_opacity_press;
+        }
+        focus when root.enabled && root.has_focus : {
+            root.state_layer_opacity: MaterialPalette.state_layer_opacity_focus;
         }
         hover when root.enabled && root.has_hover && !MaterialWindowAdapter.disable_hover : {
             root.state_layer_opacity: MaterialPalette.state_layer_opacity_hover;
@@ -144,27 +214,128 @@ export component StateLayerArea inherits FocusTouchArea {
     property <bool> popup_open;
     property <bool> has_h: root.mouse-x > 0 && root.mouse-x < root.width && root.mouse-y > 0 && root.mouse-y < root.height;
 
-    if !root.enabled || (root.enabled && (root.has_focus || root.pressed || root.enter_pressed || root.has_hover)) : StateLayer {
+    property <bool> r0_active: false;
+    property <length> r0_x;
+    property <length> r0_y;
+    property <bool> r0_pressed: false;
+
+    property <bool> r1_active: false;
+    property <length> r1_x;
+    property <length> r1_y;
+    property <bool> r1_pressed: false;
+
+    property <bool> r2_active: false;
+    property <length> r2_x;
+    property <length> r2_y;
+    property <bool> r2_pressed: false;
+
+    property <bool> r3_active: false;
+    property <length> r3_x;
+    property <length> r3_y;
+    property <bool> r3_pressed: false;
+
+    function trigger_ripple(x: length, y: length) {
+        if !root.r0_active {
+            root.r0_x = x; root.r0_y = y; root.r0_pressed = true; root.r0_active = true;
+        } else if !root.r1_active {
+            root.r1_x = x; root.r1_y = y; root.r1_pressed = true; root.r1_active = true;
+        } else if !root.r2_active {
+            root.r2_x = x; root.r2_y = y; root.r2_pressed = true; root.r2_active = true;
+        } else if !root.r3_active {
+            root.r3_x = x; root.r3_y = y; root.r3_pressed = true; root.r3_active = true;
+        }
+    }
+
+    function release_ripples() {
+        root.r0_pressed = false;
+        root.r1_pressed = false;
+        root.r2_pressed = false;
+        root.r3_pressed = false;
+    }
+
+    pointer-event(event) => {
+        if root.enabled {
+            if event.button == PointerEventButton.left && event.kind == PointerEventKind.down {
+                root.trigger_ripple(root.mouse-x, root.mouse-y);
+            } else if event.kind == PointerEventKind.up || event.kind == PointerEventKind.cancel {
+                root.release_ripples();
+            }
+        }
+    }
+
+    changed pressed => {
+        if !self.pressed {
+            root.release_ripples();
+        }
+    }
+
+    changed enter_pressed => {
+        if self.enter_pressed && root.enabled {
+            root.trigger_ripple(root.width / 2, root.height / 2);
+        } else if !self.enter_pressed {
+            root.release_ripples();
+        }
+    }
+
+    if !root.enabled || (root.enabled && (root.has_focus || root.has_hover)) : StateLayer {
         width: 100%;
         height: 100%;
         background: root.transparent_background ? transparent : root.color;
         border_radius: root.border_radius;
         enabled: root.enabled;
-        pressed: root.pressed || root.enter_pressed;
+        pressed: false;
         has_focus: root.has_focus;
         has_hover: root.has_hover;
         display_background: root.display_background;
     }
 
-    // ripple
-    if root.enabled && (root.pressed || root.enter_pressed) : Ripple {
-        pressed_x: root.pressed_x;
-        pressed_y: root.pressed_y;
+    // ripples
+    if root.enabled && root.r0_active : Ripple {
+        pressed: root.r0_pressed;
+        pressed_x: root.r0_x;
+        pressed_y: root.r0_y;
         width: 100%;
         height: 100%;
         border_radius: root.border_radius;
         color: root.color;
         clip_ripple: root.clip_ripple;
+        finished => { root.r0_active = false; }
+    }
+
+    if root.enabled && root.r1_active : Ripple {
+        pressed: root.r1_pressed;
+        pressed_x: root.r1_x;
+        pressed_y: root.r1_y;
+        width: 100%;
+        height: 100%;
+        border_radius: root.border_radius;
+        color: root.color;
+        clip_ripple: root.clip_ripple;
+        finished => { root.r1_active = false; }
+    }
+
+    if root.enabled && root.r2_active : Ripple {
+        pressed: root.r2_pressed;
+        pressed_x: root.r2_x;
+        pressed_y: root.r2_y;
+        width: 100%;
+        height: 100%;
+        border_radius: root.border_radius;
+        color: root.color;
+        clip_ripple: root.clip_ripple;
+        finished => { root.r2_active = false; }
+    }
+
+    if root.enabled && root.r3_active : Ripple {
+        pressed: root.r3_pressed;
+        pressed_x: root.r3_x;
+        pressed_y: root.r3_y;
+        width: 100%;
+        height: 100%;
+        border_radius: root.border_radius;
+        color: root.color;
+        clip_ripple: root.clip_ripple;
+        finished => { root.r3_active = false; }
     }
 
     @children

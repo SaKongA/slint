@@ -10,8 +10,10 @@ export global MaterialAnimations {
     out property <duration> standard_decelerate_duration: 250ms;
     out property <duration> standard_accelerate_duration: 200ms;
     out property <duration> standard_fast_duration: 150ms;
-    out property <easing> ripple_easing: ease_out;
-    out property <duration> ripple_duration: 2s;
+    out property <easing> ripple_easing: cubic-bezier(0.4, 0.0, 0.2, 1.0);
+    out property <duration> ripple_duration: 225ms;
+    out property <duration> ripple_fade_in_duration: 75ms;
+    out property <duration> ripple_fade_out_duration: 150ms;
     out property <easing> opacity_easing: ease;
     out property <duration> opacity_duration: 250ms;
 }
