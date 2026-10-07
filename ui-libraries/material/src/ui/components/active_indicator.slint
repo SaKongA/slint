@@ -1,0 +1,44 @@
+// Copyright © SixtyFPS GmbH <info@slint.dev>
+// SPDX-License-Identifier: MIT
+
+import { MaterialPalette } from "../styling/material_palette.slint";
+import { MaterialAnimations } from "../styling/material_animations.slint";
+
+export component ActiveIndicator {
+    in property <bool> active: false;
+    in property <color> active_color: MaterialPalette.secondary_container;
+    in property <length> active_width: root.width;
+    in property <length> active_height: root.height;
+    in property <length> border_radius: root.active_height / 2;
+    in property <duration> animation_duration: MaterialAnimations.standard_decelerate_duration;
+
+    width: 100%;
+    height: 100%;
+
+    indicator := Rectangle {
+        x: (root.width - self.width) / 2;
+        y: (root.height - self.height) / 2;
+        height: root.active_height;
+        border_radius: root.border_radius;
+        background: root.active_color;
+
+        width: 0px;
+        opacity: 0.0;
+
+        states [
+            active when root.active : {
+                width: root.active_width;
+                opacity: 1.0;
+            }
+        ]
+
+        animate width {
+            duration: root.animation_duration;
+            easing: MaterialAnimations.emphasized_easing;
+        }
+        animate opacity {
+            duration: MaterialAnimations.standard_fast_duration;
+            easing: MaterialAnimations.opacity_easing;
+        }
+    }
+}

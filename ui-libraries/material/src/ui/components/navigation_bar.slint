@@ -11,11 +11,23 @@ import { StateLayer, Ripple } from "./state_layer.slint";
 import { Icon } from "./icon.slint";
 import { NavigationItem } from "../items/navigation_item.slint";
 import { BaseNavigationItemTemplate, BaseNavigation } from "./base_navigation.slint";
+import { ActiveIndicator } from "./active_indicator.slint";
+import { MaterialAnimations } from "../styling/material_animations.slint";
 
 export component NavigationItemTemplate inherits BaseNavigationItemTemplate {
     property <bool> has_icon: root.icon.width > 0 && root.icon.height > 0;
     property <bool> has_selected_icon: root.selected_icon.width > 0 || root.selected_icon.height > 0;
-    property <color> color: MaterialPalette.on_surface;
+    property <color> icon_color: root.selected ? MaterialPalette.on_secondary_container : MaterialPalette.on_surface_variant;
+    property <color> text_color: root.selected ? MaterialPalette.on_surface : MaterialPalette.on_surface_variant;
+
+    animate icon_color {
+        duration: MaterialAnimations.standard_decelerate_duration;
+        easing: MaterialAnimations.emphasized_easing;
+    }
+    animate text_color {
+        duration: MaterialAnimations.standard_decelerate_duration;
+        easing: MaterialAnimations.emphasized_easing;
+    }
 
     in property <length> navitem_padding_top: MaterialStyleMetrics.padding_12;
     in property <length> navitem_padding_bottom: MaterialStyleMetrics.padding_16;
@@ -39,12 +51,16 @@ export component NavigationItemTemplate inherits BaseNavigationItemTemplate {
                     alignment: center;
 
                     background_layer := Rectangle {
-                        min_width: state_layout.min_width;
-                        min_height: max(MaterialStyleMetrics.size_32, state_layout.min_height);
+                        width: max(MaterialStyleMetrics.size_64, state_layout.min_width);
+                        height: max(MaterialStyleMetrics.size_32, state_layout.min_height);
                         border_radius: self.height / 2;
 
+                        ActiveIndicator {
+                            active: root.selected;
+                        }
+
                         state_layer := StateLayer {
-                            background: root.color;
+                            background: root.icon_color;
                             border_radius: parent.border_radius;
                             enabled: true;
                             has_focus: touch_area.has_focus;
@@ -58,7 +74,7 @@ export component NavigationItemTemplate inherits BaseNavigationItemTemplate {
                                 height: root.height;
                                 pressed_x: touch_area.pressed_x;
                                 pressed_y: touch_area.pressed_y;
-                                color: root.color;
+                                color: root.icon_color;
                             }
 
                             state_layout := HorizontalLayout {
@@ -73,12 +89,12 @@ export component NavigationItemTemplate inherits BaseNavigationItemTemplate {
                                         width: 12px;
                                         height: self.width;
                                         border_radius: self.width / 2;
-                                        background: root.color;
+                                        background: root.icon_color;
                                     }
 
                                     if root.has_icon || root.has_selected_icon : Icon {
                                         source: root.icon;
-                                        colorize: root.color;
+                                        colorize: root.icon_color;
 
                                         states [
                                             selected when root.selected && root.has_selected_icon : {
@@ -101,7 +117,7 @@ export component NavigationItemTemplate inherits BaseNavigationItemTemplate {
                 label := MaterialText {
                     text: root.text;
                     style: MaterialTypography.label_medium;
-                    color: root.color;
+                    color: root.text_color;
                     horizontal_alignment: center;
                 }
             }
@@ -112,13 +128,6 @@ export component NavigationItemTemplate inherits BaseNavigationItemTemplate {
         }
     }
 
-    states [
-        selected when root.selected : {
-            background_layer.background: MaterialPalette.secondary_container;
-            state_layer.background: transparent;
-            label.style: MaterialTypography.label_medium_prominent;
-        }
-    ]
 }
 
 export component NavigationBar inherits BaseNavigation {
